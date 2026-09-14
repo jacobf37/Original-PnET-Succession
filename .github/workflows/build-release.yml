@@ -121,7 +121,7 @@ jobs:
 
       - name: Build Windows Installer
         run: |
-          $installer = "./deploy/installer/PnET Succession 6.1.1.iss"
+          $installer = "./deploy/installer/PnET Succession 6.1.iss"
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" $installer
 
       - name: Extract current version from tag
