@@ -34,14 +34,16 @@ jobs:
         id: version
         run: |
           if ("${{ github.event_name }}" -eq "workflow_call") {
+            # version passed from version-bump.yml
             echo "v=${{ inputs.version }}" >> $env:GITHUB_OUTPUT
           }
-          elseif (StartsWith("${{ github.ref }}", "refs/tags/")) {
+          elseif ("${{ github.ref }}".StartsWith("refs/tags/")) {
+            # version coming from a pushed tag
             $clean = "${{ github.ref_name }}".TrimStart("v")
             echo "v=$clean" >> $env:GITHUB_OUTPUT
           }
           else {
-            Write-Error "No valid version source provided."
+            Write-Error "No valid version source available."
           }
 
       - name: Install .NET SDK
