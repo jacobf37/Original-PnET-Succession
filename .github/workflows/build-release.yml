@@ -1,7 +1,6 @@
 name: Build Extension, Installer, and Release
 
 on:
-  # Manual trigger for automatic version bumping
   workflow_dispatch:
     inputs:
       bump:
@@ -14,7 +13,6 @@ on:
           - minor
           - major
 
-  # Trigger when you push a version tag matching vX.Y.Z
   push:
     tags:
       - "v*"
@@ -32,11 +30,19 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Restore project
-        run: dotnet restore ./src/PnET-Succession.csproj
+      # ADD MYGET SOURCE FOR LANDIS CORE PACKAGE
+      - name: Add MyGet package source for LANDIS-II feed
+        run: |
+          dotnet nuget add source "https://www.myget.org/F/landis-ii-v8/api/v3/index.json" --name "LANDIS-II-V8"
+
+      - name: List NuGet sources (debug)
+        run: dotnet nuget list source
 
       - name: Download LANDIS-II Support Libraries
         run: PowerShell -ExecutionPolicy Bypass -File ./src/lib/support_libs_download.ps1
+
+      - name: Restore project
+        run: dotnet restore ./src/PnET-Succession.csproj
 
       - name: Build extension project
         run: dotnet build ./src/PnET-Succession.csproj --configuration Release --no-restore
@@ -49,19 +55,16 @@ jobs:
           $installer = "./deploy/installer/PnET Succession 6.1.1.iss"
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" $installer
 
-      # -------------------------------
-      # Extract current version from tag
-      # -------------------------------
+      ###############################
+      # VERSION EXTRACTION
+      ###############################
       - name: Extract current version
         id: current
         run: |
-          $version = "${{ github.ref_name }}"    # e.g., v6.1.1
-          $clean   = $version.TrimStart("v")     # 6.1.1
+          $version = "${{ github.ref_name }}"            # e.g., v6.1.1
+          $clean   = $version.TrimStart("v")            # -> 6.1.1
           echo "current=$clean" >> $env:GITHUB_OUTPUT
 
-      # ---------------------------------------
-      # Generate installer filename dynamically
-      # ---------------------------------------
       - name: Collect Installer Filename
         id: namegen
         run: |
@@ -69,9 +72,9 @@ jobs:
           $file = "LANDIS-II-V8 PnET-Succession $version-setup.exe"
           echo "installer=$file" >> $env:GITHUB_OUTPUT
 
-      # ----------------------------
-      # Publish GitHub Release
-      # ----------------------------
+      ###############################
+      # CREATE RELEASE
+      ###############################
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -82,9 +85,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # -----------------------------------------
-      # Update Documentation (docs/index.md)
-      # -----------------------------------------
+      ###############################
+      # UPDATE docs/index.md
+      ###############################
       - name: Update Documentation (index.md)
         run: |
           $version     = "${{ steps.current.outputs.current }}"
@@ -96,65 +99,60 @@ jobs:
           $indexPath = "./docs/index.md"
           $content = Get-Content $indexPath
 
-          # Update release notes
+          # Update Release Notes line
           $releaseLine = "Latest official release: Version $version — $(Get-Date -Format 'MMMM yyyy')"
           $content = $content -replace "Latest official release: Version .*", $releaseLine
 
-          # Update download section
+          # Update Download section line
           $downloadLine = "Version $version installer can be downloaded here: $url. To install it on your computer, launch the installer."
           $content = $content -replace "Version .* installer can be downloaded here:.*", $downloadLine
 
           Set-Content $indexPath $content
 
-      # ------------------------------------------------
-      # Update installer metadata file (PnET-Succession.txt)
-      # ------------------------------------------------
+      ###############################
+      # UPDATE PnET-Succession.txt
+      ###############################
       - name: Update Installer Metadata File
         run: |
           $version = "${{ steps.current.outputs.current }}"
           $filePath = "./deploy/installer/PnET-Succession.txt"
-
           $content = Get-Content $filePath
-          $content = $content -replace 'Version\s+"[^"]+"', "Version      `"$version`""
+
+          $content = $content -replace 'Version\s+"[^"]+"',     "Version      `"$version`""
           $content = $content -replace 'Description\s+"[^"]+"', "Description  `"PnET-Succession Version $version`""
+
           Set-Content $filePath $content
 
-      # -------------------------------------
-      # Commit updated docs + metadata
-      # -------------------------------------
       - name: Commit updated files
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add ./docs/index.md
           git add ./deploy/installer/PnET-Succession.txt
-          git commit -m "Update documentation and metadata for version ${{ steps.current.outputs.current }}"
+          git commit -m "Update docs and metadata for version ${{ steps.current.outputs.current }}"
           git push
 
-      # -----------------------------------------
-      # Auto-bump next version (patch/minor/major)
-      # -----------------------------------------
+      ###############################
+      # VERSION BUMP LOGIC
+      ###############################
       - name: Calculate next version
         id: bump
         run: |
           $current = "${{ steps.current.outputs.current }}"
-          $parts = $current.Split(".")
-          $major = [int]$parts[0]
-          $minor = [int]$parts[1]
-          $patch = [int]$parts[2]
+          $major, $minor, $patch = $current.Split(".")
 
           switch ("${{ github.event.inputs.bump }}") {
             "major" {
-              $major += 1
+              $major = [int]$major + 1
               $minor = 0
               $patch = 0
             }
             "minor" {
-              $minor += 1
+              $minor = [int]$minor + 1
               $patch = 0
             }
             "patch" {
-              $patch += 1
+              $patch = [int]$patch + 1
             }
           }
 
