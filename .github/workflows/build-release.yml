@@ -95,12 +95,13 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
           name: "PnET-Succession v${{ steps.version.outputs.v }}"
           files: |
-            deploy/installer/LANDIS-II-V8 PnET-Succession ${{ steps.version.outputs.v }}-setup.exe
+            deploy/installer/LANDIS-II-V8_PnET-Succession_${{ steps.version.outputs.v }}_setup.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
       - name: Update Documentation
         run: |
