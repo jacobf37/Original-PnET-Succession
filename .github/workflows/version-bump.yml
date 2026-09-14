@@ -18,7 +18,7 @@ on:
           - minor
           - major
       base_version:
-        description: "Optional base version to bump (e.g., 6.1.1). If omitted, latest tag is used."
+        description: "Optional base version (e.g., 6.1.1). If empty, latest tag is used."
         required: false
 
 jobs:
@@ -29,8 +29,8 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Compute base version
-        id: base
+      - name: Determine starting version
+        id: startver
         run: |
           if [ -n "${{ github.event.inputs.base_version }}" ]; then
             echo "base=${{ github.event.inputs.base_version }}" >> $GITHUB_OUTPUT
@@ -43,7 +43,7 @@ jobs:
       - name: Compute bumped version
         id: bumpver
         run: |
-          base="${{ steps.base.outputs.base }}"
+          base="${{ steps.startver.outputs.base }}"
           bump="${{ github.event.inputs.bump }}"
 
           arr=(${base//./ })
@@ -76,7 +76,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: "build-release.yml",
-              ref: context.ref.replace("refs/heads/", ""), // auto-detect branch
+              ref: context.ref.replace("refs/heads/", ""),
               inputs: {
                 version: "${{ steps.bumpver.outputs.next }}"
               }
