@@ -1,0 +1,168 @@
+name: Build Extension, Installer, and Release
+
+on:
+  # Manual trigger for automatic version bumping
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump type (patch, minor, major)"
+        required: true
+        default: "patch"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+  # Trigger when you push a version tag matching vX.Y.Z
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore solution
+        run: dotnet restore PnET-Succession.sln
+
+      - name: Download LANDIS-II Support Libraries
+        run: PowerShell -ExecutionPolicy Bypass -File ./src/lib/support_libs_download.ps1
+
+      - name: Build solution
+        run: dotnet build PnET-Succession.sln --configuration Release --no-restore
+
+      - name: Install Inno Setup
+        run: choco install innosetup --yes
+
+      - name: Build Windows Installer
+        run: |
+          $installer = "./deploy/installer/PnET Succession 6.1.1.iss"
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" $installer
+
+      # -------------------------------
+      # Extract current version from tag
+      # -------------------------------
+      - name: Extract current version
+        id: current
+        run: |
+          $version = "${{ github.ref_name }}"    # e.g., v6.1.1
+          $clean   = $version.TrimStart("v")     # 6.1.1
+          echo "current=$clean" >> $env:GITHUB_OUTPUT
+
+      # ---------------------------------------
+      # Generate installer filename dynamically
+      # ---------------------------------------
+      - name: Collect Installer Filename
+        id: namegen
+        run: |
+          $version = "${{ steps.current.outputs.current }}"
+          $file = "LANDIS-II-V8 PnET-Succession $version-setup.exe"
+          echo "installer=$file" >> $env:GITHUB_OUTPUT
+
+      # ----------------------------
+      # Publish GitHub Release
+      # ----------------------------
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "PnET-Succession v${{ steps.current.outputs.current }}"
+          files: |
+            deploy/installer/${{ steps.namegen.outputs.installer }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # -----------------------------------------
+      # Update Documentation (docs/index.md)
+      # -----------------------------------------
+      - name: Update Documentation (index.md)
+        run: |
+          $version     = "${{ steps.current.outputs.current }}"
+          $tag         = "${{ github.ref_name }}"
+          $installer   = "${{ steps.namegen.outputs.installer }}"
+          $repo        = "${{ github.repository }}"
+          $url         = "https://github.com/$repo/releases/download/$tag/$installer"
+
+          $indexPath = "./docs/index.md"
+          $content = Get-Content $indexPath
+
+          # Update release notes
+          $releaseLine = "Latest official release: Version $version — $(Get-Date -Format 'MMMM yyyy')"
+          $content = $content -replace "Latest official release: Version .*", $releaseLine
+
+          # Update download section
+          $downloadLine = "Version $version installer can be downloaded here: $url. To install it on your computer, launch the installer."
+          $content = $content -replace "Version .* installer can be downloaded here:.*", $downloadLine
+
+          Set-Content $indexPath $content
+
+      # ------------------------------------------------
+      # Update installer metadata file (PnET-Succession.txt)
+      # ------------------------------------------------
+      - name: Update Installer Metadata File
+        run: |
+          $version = "${{ steps.current.outputs.current }}"
+          $filePath = "./deploy/installer/PnET-Succession.txt"
+
+          $content = Get-Content $filePath
+          $content = $content -replace 'Version\s+"[^"]+"', "Version      `"$version`""
+          $content = $content -replace 'Description\s+"[^"]+"', "Description  `"PnET-Succession Version $version`""
+          Set-Content $filePath $content
+
+      # -------------------------------------
+      # Commit updated docs + metadata
+      # -------------------------------------
+      - name: Commit updated files
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add ./docs/index.md
+          git add ./deploy/installer/PnET-Succession.txt
+          git commit -m "Update documentation and metadata for version ${{ steps.current.outputs.current }}"
+          git push
+
+      # -----------------------------------------
+      # Auto-bump next version (patch/minor/major)
+      # -----------------------------------------
+      - name: Calculate next version
+        id: bump
+        run: |
+          $current = "${{ steps.current.outputs.current }}"
+          $parts = $current.Split(".")
+          $major = [int]$parts[0]
+          $minor = [int]$parts[1]
+          $patch = [int]$parts[2]
+
+          switch ("${{ github.event.inputs.bump }}") {
+            "major" {
+              $major += 1
+              $minor = 0
+              $patch = 0
+            }
+            "minor" {
+              $minor += 1
+              $patch = 0
+            }
+            "patch" {
+              $patch += 1
+            }
+          }
+
+          $next = "$major.$minor.$patch"
+          echo "nextVersion=$next" >> $env:GITHUB_OUTPUT
+
+      - name: Push next version tag
+        run: |
+          $next = "${{ steps.bump.outputs.nextVersion }}"
+          git tag "v$next"
+          git push origin "v$next"
