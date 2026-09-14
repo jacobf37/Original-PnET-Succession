@@ -35,9 +35,13 @@ jobs:
         run: |
           if ("${{ github.event_name }}" -eq "workflow_call") {
             echo "v=${{ inputs.version }}" >> $env:GITHUB_OUTPUT
-          } else {
+          }
+          elseif (StartsWith("${{ github.ref }}", "refs/tags/")) {
             $clean = "${{ github.ref_name }}".TrimStart("v")
             echo "v=$clean" >> $env:GITHUB_OUTPUT
+          }
+          else {
+            Write-Error "No valid version source provided."
           }
 
       - name: Install .NET SDK
@@ -48,7 +52,7 @@ jobs:
       - name: Add MyGet package source
         run: dotnet nuget add source "https://www.myget.org/F/landis-ii-v8/api/v3/index.json" --name "LANDIS-II-V8"
 
-      - name: Download support libraries
+      - name: Download LANDIS-II Support Libraries
         run: PowerShell -ExecutionPolicy Bypass -File ./src/lib/support_libs_download.ps1
 
       - name: Restore project
@@ -67,6 +71,10 @@ jobs:
           $template = "./deploy/installer/PnET-Succession-template.iss"
           $outfile  = "./deploy/installer/PnET Succession $version.iss"
 
+          if (-not (Test-Path $template)) {
+            Write-Error "Template .iss file not found: $template"
+          }
+
           $content = (Get-Content $template) -replace "\{VERSION\}", $version
           Set-Content $outfile $content
 
@@ -83,33 +91,35 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: "PnET-Succession v${{ steps.version.outputs.v }}"
           files: |
-            deploy/installer/LANDIS-II-V8 PnET-Succession ${{
-              steps.version.outputs.v
-            }}-setup.exe
+            deploy/installer/LANDIS-II-V8 PnET-Succession ${{ steps.version.outputs.v }}-setup.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update documentation
+      - name: Update Documentation
         run: |
           $v   = "${{ steps.version.outputs.v }}"
           $tag = "${{ github.ref_name }}"
           $exe = "LANDIS-II-V8 PnET-Succession $v-setup.exe"
           $url = "https://github.com/${{ github.repository }}/releases/download/$tag/$exe"
 
-          $path = "./docs/index.md"
-          $content = Get-Content $path
+          $indexPath = "./docs/index.md"
+          $content = Get-Content $indexPath
+
           $content = $content -replace "Latest official release: Version .*", "Latest official release: Version $v — $(Get-Date -Format 'MMMM yyyy')"
           $content = $content -replace "Version .* installer can be downloaded here:.*", "Version $v installer can be downloaded here: $url. To install it on your computer, launch the installer."
-          Set-Content $path $content
 
-      - name: Update metadata file
+          Set-Content $indexPath $content
+
+      - name: Update Metadata File
         run: |
-          $v   = "${{ steps.version.outputs.v }}"
-          $filePath = "./deploy/installer/PnET-Succession.txt"
-          $content = Get-Content $filePath
+          $v       = "${{ steps.version.outputs.v }}"
+          $pathTxt = "./deploy/installer/PnET-Succession.txt"
+          $content = Get-Content $pathTxt
+
           $content = $content -replace 'Version\s+"[^"]+"',     "Version      `"$v`""
           $content = $content -replace 'Description\s+"[^"]+"', "Description  `"PnET-Succession Version $v`""
-          Set-Content $filePath $content
+
+          Set-Content $pathTxt $content
 
       - name: Commit updates
         run: |
@@ -117,5 +127,5 @@ jobs:
           git config user.email "github-actions@github.com"
           git add ./docs/index.md
           git add ./deploy/installer/PnET-Succession.txt
-          git commit -m "Update documentation and metadata for version ${{ steps.version.outputs.v }}"
+          git commit -m "Update docs and metadata for version ${{ steps.version.outputs.v }}"
           git push
