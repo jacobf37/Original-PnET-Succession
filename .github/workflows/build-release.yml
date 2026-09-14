@@ -1,5 +1,10 @@
 name: Build Extension, Installer, and Release
 
+permissions:
+  contents: write
+  actions: write
+  id-token: write
+  
 on:
   # Manual version bump workflow
   workflow_dispatch:
