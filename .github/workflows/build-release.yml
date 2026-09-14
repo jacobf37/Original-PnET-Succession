@@ -33,13 +33,13 @@ jobs:
           dotnet-version: 8.0.x
 
       - name: Restore solution
-        run: dotnet restore PnET-Succession.sln
+        run: dotnet restore ./src/PnET-Succession.sln
 
       - name: Download LANDIS-II Support Libraries
         run: PowerShell -ExecutionPolicy Bypass -File ./src/lib/support_libs_download.ps1
 
       - name: Build solution
-        run: dotnet build PnET-Succession.sln --configuration Release --no-restore
+        run: dotnet build ./src/PnET-Succession.sln --configuration Release --no-restore
 
       - name: Install Inno Setup
         run: choco install innosetup --yes
