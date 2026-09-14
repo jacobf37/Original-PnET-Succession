@@ -33,17 +33,22 @@ jobs:
       - name: Determine version
         id: version
         run: |
-          if ("${{ github.event_name }}" -eq "workflow_call") {
-            # version passed from version-bump.yml
+          # CASE 1: Manual dispatch (workflow_dispatch) OR workflow_call
+          if ("${{ github.event_name }}" -eq "workflow_dispatch" -or "${{ github.event_name }}" -eq "workflow_call") {
             echo "v=${{ inputs.version }}" >> $env:GITHUB_OUTPUT
+            exit 0
           }
+      
+          # CASE 2: Tag push
           elseif ("${{ github.ref }}".StartsWith("refs/tags/")) {
-            # version coming from a pushed tag
             $clean = "${{ github.ref_name }}".TrimStart("v")
             echo "v=$clean" >> $env:GITHUB_OUTPUT
+            exit 0
           }
+      
+          # CASE 3: Invalid source
           else {
-            Write-Error "No valid version source available."
+            Write-Error "No valid version source available. Event was '${{ github.event_name }}'."
           }
 
       - name: Install .NET SDK
