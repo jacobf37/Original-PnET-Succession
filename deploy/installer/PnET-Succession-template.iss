@@ -1,11 +1,15 @@
-; LANDIS-II Extension information
+; -------------------------------------------------------------------
+; LANDIS-II PnET-Succession Dynamic Installer Template
+; {VERSION} will be replaced by GitHub Actions at build time.
+; -------------------------------------------------------------------
+
 #define CoreRelease "LANDIS-II-V8"
 #define ExtensionName "PnET-Succession"
 #define AppVersion "{VERSION}"
 #define AppPublisher "LANDIS-II Foundation"
 #define AppURL "http://www.landis-ii.org/"
 
-; Build directory
+; Build directory (Release output)
 #define BuildDir "..\..\src\bin\Release"
 
 ; LANDIS-II installation directories
@@ -14,6 +18,7 @@
 #define LandisPlugInDir "C:\Program Files\LANDIS-II-v8\plug-ins-installer-files"
 #define ExtensionsCmd AppDir + "\commands\landis-ii-extensions.cmd"
 
+; -------------------------------------------------------------------
 [Setup]
 AppId={{00061EE9-D461-4B71-A2AC-8E5D15F28D6A}
 AppName={#CoreRelease} {#ExtensionName}
@@ -23,40 +28,79 @@ AppPublisher={#AppPublisher}
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}
 AppUpdatesURL={#AppURL}
+
 DefaultDirName={pf}\{#ExtensionName}
 DisableDirPage=yes
 DefaultGroupName={#ExtensionName}
 DisableProgramGroupPage=yes
+
 LicenseFile=LANDIS-II_Binary_license.rtf
+
 OutputDir={#SourcePath}
 OutputBaseFilename={#CoreRelease} {#ExtensionName} {#AppVersion}-setup
+
 Compression=lzma
 SolidCompression=yes
 
+; -------------------------------------------------------------------
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
+; -------------------------------------------------------------------
 [Files]
-Source: {#BuildDir}\Landis.Extension.Succession.BiomassPnET-v6.dll; DestDir: {#ExtDir}; Flags: ignoreversion
+; Main extension DLL
+Source: {#BuildDir}\Landis.Extension.Succession.BiomassPnET-v6.dll; \
+  DestDir: {#ExtDir}; Flags: ignoreversion
 
-Source: {#BuildDir}\Landis.Library.UniversalCohorts-v2.dll; DestDir: {#ExtDir}; Flags: uninsneveruninstall ignoreversion
-Source: {#BuildDir}\Landis.Library.Climate-v6.dll; DestDir: {#ExtDir}; Flags: uninsneveruninstall ignoreversion
-Source: {#BuildDir}\Landis.Library.InitialCommunity.Universal-v2.dll; DestDir: {#ExtDir}; Flags: uninsneveruninstall ignoreversion
-Source: {#BuildDir}\Landis.Library.Metadata-v2.dll; DestDir: {#ExtDir}; Flags: uninsneveruninstall ignoreversion
-Source: {#BuildDir}\Landis.Library.Parameters-v2.dll; DestDir: {#ExtDir}; Flags: uninsneveruninstall ignoreversion
-Source: {#BuildDir}\Landis.Library.PnETCohorts-v2.dll; DestDir: {#ExtDir}; Flags: uninsneveruninstall ignoreversion
-Source: {#BuildDir}\Landis.Library.Succession-v10.dll; DestDir: {#ExtDir}; Flags: uninsneveruninstall ignoreversion
+; Core LANDIS-II support libraries
+Source: {#BuildDir}\Landis.Library.UniversalCohorts-v2.dll; \
+  DestDir: {#ExtDir}; Flags: uninsneveruninstall ignoreversion
 
-Source: ..\Defaults\PnETGenericDefaultParameters.txt; DestDir: {#ExtDir}\Defaults; Flags: ignoreversion
-Source: ..\Defaults\VanGenuchtenParameters.txt; DestDir: {#ExtDir}\Defaults; Flags: ignoreversion
-Source: ..\Defaults\SaxtonAndRawlsParameters.txt; DestDir: {#ExtDir}\Defaults; Flags: ignoreversion
+Source: {#BuildDir}\Landis.Library.Climate-v6.dll; \
+  DestDir: {#ExtDir}; Flags: uninsneveruninstall ignoreversion
 
+Source: {#BuildDir}\Landis.Library.InitialCommunity.Universal-v2.dll; \
+  DestDir: {#ExtDir}; Flags: uninsneveruninstall ignoreversion
+
+Source: {#BuildDir}\Landis.Library.Metadata-v2.dll; \
+  DestDir: {#ExtDir}; Flags: uninsneveruninstall ignoreversion
+
+Source: {#BuildDir}\Landis.Library.Parameters-v2.dll; \
+  DestDir: {#ExtDir}; Flags: uninsneveruninstall ignoreversion
+
+Source: {#BuildDir}\Landis.Library.PnETCohorts-v2.dll; \
+  DestDir: {#ExtDir}; Flags: uninsneveruninstall ignoreversion
+
+Source: {#BuildDir}\Landis.Library.Succession-v10.dll; \
+  DestDir: {#ExtDir}; Flags: uninsneveruninstall ignoreversion
+
+; Parameter defaults
+Source: ..\Defaults\PnETGenericDefaultParameters.txt; \
+  DestDir: {#ExtDir}\Defaults; Flags: ignoreversion
+
+Source: ..\Defaults\VanGenuchtenParameters.txt; \
+  DestDir: {#ExtDir}\Defaults; Flags: ignoreversion
+
+Source: ..\Defaults\SaxtonAndRawlsParameters.txt; \
+  DestDir: {#ExtDir}\Defaults; Flags: ignoreversion
+
+; Info file (version-specific)
 #define InfoTxt "PnET-Succession.txt"
 Source: {#InfoTxt}; DestDir: {#LandisPlugInDir}
 
+; -------------------------------------------------------------------
 [Run]
-Filename: {#ExtensionsCmd}; Parameters: "remove \"PnET-Succession\" "; WorkingDir: {#LandisPlugInDir}
-Filename: {#ExtensionsCmd}; Parameters: "add \"{#InfoTxt}\" "; WorkingDir: {#LandisPlugInDir}
+; SAFELY QUOTED COMMANDS (critical fix)
+Filename: {#ExtensionsCmd}; \
+  Parameters: 'remove "PnET-Succession"'; \
+  WorkingDir: {#LandisPlugInDir}
 
+Filename: {#ExtensionsCmd}; \
+  Parameters: 'add "{#InfoTxt}"'; \
+  WorkingDir: {#LandisPlugInDir}
+
+; -------------------------------------------------------------------
 [UninstallRun]
-Filename: {#ExtensionsCmd}; Parameters: "remove \"PnET-Succession\" "; WorkingDir: {#LandisPlugInDir}
+Filename: {#ExtensionsCmd}; \
+  Parameters: 'remove "PnET-Succession"'; \
+  WorkingDir: {#LandisPlugInDir}
