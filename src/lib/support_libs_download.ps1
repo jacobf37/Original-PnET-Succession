@@ -18,23 +18,21 @@ $dlls =
 
 
 # LANDIS-II support libraries download
-$current = Get-Location
-$outpath = $current.toString() + "/"
+$outpath = "$PSScriptRoot/"  # PUT DLLs IN src/lib/
+
 
 try {
-	ForEach ($item in $dlls) {
-		$dll = $outpath + $item
-		$url = $master + $item
-		[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-		Invoke-WebRequest -uri $url -Outfile $dll
-		($dll).split('/')[-1].toString() + "------------- downloaded"
-	}
-	"`n***** Download complete *****`n"
-}
-catch [System.Net.WebException],[System.IO.IOException]{
-	"Unable to download file from " + $item.toString()
+    ForEach ($item in $dlls) {
+        $dll = $outpath + $item
+        $url = $master + $item
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        Invoke-WebRequest -uri $url -Outfile $dll
+        ($dll).split('/')[-1].toString() + " downloaded"
+    }
+    "`n***** Download complete *****`n"
 }
 catch {
-	"An error occurred."
+    "Error downloading $item"
 }
+
 
