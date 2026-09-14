@@ -25,16 +25,13 @@ AppPublisher={#AppPublisher}
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}
 AppUpdatesURL={#AppURL}
-
 DefaultDirName={pf}\{#ExtensionName}
 DisableDirPage=yes
 DefaultGroupName={#ExtensionName}
 DisableProgramGroupPage=yes
 LicenseFile=LANDIS-II_Binary_license.rtf
-
 OutputDir={#SourcePath}
-OutputBaseFilename={#CoreRelease} {#ExtensionName} {#AppVersion}-setup
-
+OutputBaseFilename={#CoreRelease}_{#ExtensionName}_{#AppVersion}_setup
 Compression=lzma
 SolidCompression=yes
 
@@ -43,7 +40,6 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
 Source: {#BuildDir}\Landis.Extension.Succession.BiomassPnET-v6.dll; DestDir: {#ExtDir}; Flags: ignoreversion
-
 Source: {#BuildDir}\Landis.Library.UniversalCohorts-v2.dll; DestDir: {#ExtDir}; Flags: uninsneveruninstall ignoreversion
 Source: {#BuildDir}\Landis.Library.Climate-v6.dll; DestDir: {#ExtDir}; Flags: uninsneveruninstall ignoreversion
 Source: {#BuildDir}\Landis.Library.InitialCommunity.Universal-v2.dll; DestDir: {#ExtDir}; Flags: uninsneveruninstall ignoreversion
@@ -60,8 +56,8 @@ Source: ..\Defaults\SaxtonAndRawlsParameters.txt; DestDir: {#ExtDir}\Defaults; F
 Source: {#InfoTxt}; DestDir: {#LandisPlugInDir}
 
 [Run]
-Filename: {#ExtensionsCmd}; Parameters: "{code:'remove \"PnET-Succession\"'}"; WorkingDir: {#LandisPlugInDir}
-Filename: {#ExtensionsCmd}; Parameters: "{code:'add \"{#InfoTxt}\"'}"; WorkingDir: {#LandisPlugInDir}
+Filename: {#ExtensionsCmd}; Parameters: "remove PnET-Succession"; WorkingDir: {#LandisPlugInDir}
+Filename: {#ExtensionsCmd}; Parameters: "add {#InfoTxt}"; WorkingDir: {#LandisPlugInDir}
 
 [UninstallRun]
-Filename: {#ExtensionsCmd}; Parameters: "{code:'remove \"PnET-Succession\"'}"; WorkingDir: {#LandisPlugInDir}
+Filename: {#ExtensionsCmd}; Parameters: "remove PnET-Succession"; WorkingDir: {#LandisPlugInDir}
