@@ -20,6 +20,9 @@ on:
       base_version:
         description: "Optional base version (e.g., 6.1.1). If empty, latest tag is used."
         required: false
+      notes:
+        description: "Release notes / description for this version"
+        required: false
 
 jobs:
   bump:
@@ -68,7 +71,7 @@ jobs:
           git tag "v$next"
           git push origin "v$next"
 
-      - name: Call Build-Release workflow
+      - name: Trigger Build-Release workflow with notes
         uses: actions/github-script@v7
         with:
           script: |
@@ -78,6 +81,7 @@ jobs:
               workflow_id: "build-release.yml",
               ref: context.ref.replace("refs/heads/", ""),
               inputs: {
-                version: "${{ steps.bumpver.outputs.next }}"
+                version: "${{ steps.bumpver.outputs.next }}",
+                notes: "${{ github.event.inputs.notes }}"
               }
             });
