@@ -36,13 +36,11 @@ jobs:
       - name: Determine version
         id: version
         run: |
-          # CASE 1: workflow_dispatch OR workflow_call (manual bump)
           if ("${{ github.event_name }}" -eq "workflow_dispatch" -or "${{ github.event_name }}" -eq "workflow_call") {
             echo "v=${{ inputs.version }}" >> $env:GITHUB_OUTPUT
             exit 0
           }
 
-          # CASE 2: Tag push (automatic release)
           if ("${{ github.ref }}".StartsWith("refs/tags/")) {
             $clean = "${{ github.ref_name }}".TrimStart("v")
             echo "v=$clean" >> $env:GITHUB_OUTPUT
@@ -50,6 +48,21 @@ jobs:
           }
 
           Write-Error "No valid version source available."
+
+      # --------------------------------------------------------------
+      # UPDATE CSPROJ VERSION FIELDS
+      # --------------------------------------------------------------
+      - name: Update csproj version fields
+        run: |
+          $v = "${{ steps.version.outputs.v }}"
+          $csproj = "./src/PnET-Succession.csproj"
+          $xml = Get-Content $csproj
+
+          $xml = $xml -replace '<AssemblyVersion>.*?</AssemblyVersion>', "<AssemblyVersion>$v</AssemblyVersion>"
+          $xml = $xml -replace '<Version>.*?</Version>', "<Version>$v</Version>"
+          $xml = $xml -replace '<FileVersion>.*?</FileVersion>', "<FileVersion>$v</FileVersion>"
+
+          Set-Content $csproj $xml
 
       # --------------------------------------------------------------
       # Install .NET SDK
@@ -90,7 +103,7 @@ jobs:
         run: choco install innosetup --yes
 
       # --------------------------------------------------------------
-      # Generate dynamic .iss
+      # GENERATE DYNAMIC .ISS
       # --------------------------------------------------------------
       - name: Generate dynamic .iss script
         id: issfile
@@ -109,7 +122,7 @@ jobs:
           echo "path=$outfile" >> $env:GITHUB_OUTPUT
 
       # --------------------------------------------------------------
-      # Build installer
+      # BUILD INSTALLER
       # --------------------------------------------------------------
       - name: Build installer
         run: |
@@ -117,7 +130,7 @@ jobs:
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "$installer"
 
       # --------------------------------------------------------------
-      # UPLOAD RELEASE ASSET
+      # CREATE RELEASE AND UPLOAD INSTALLER
       # --------------------------------------------------------------
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -130,7 +143,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # --------------------------------------------------------------
-      # Update index.md
+      # UPDATE index.md
       # --------------------------------------------------------------
       - name: Update Documentation
         run: |
@@ -142,7 +155,7 @@ jobs:
           $indexPath = "./docs/index.md"
           $content = Get-Content $indexPath
 
-          $releaseLine = "Latest official release: Version $v — $(Get-Date -Format 'MMMM yyyy')"
+          $releaseLine  = "Latest official release: Version $v — $(Get-Date -Format 'MMMM yyyy')"
           $downloadLine = "Version $v installer can be downloaded here: $url. To install it on your computer, launch the installer."
 
           $content = $content -replace "Latest official release: Version .*", $releaseLine
@@ -151,11 +164,11 @@ jobs:
           Set-Content $indexPath $content
 
       # --------------------------------------------------------------
-      # UPDATE METADATA FILE (PnET-Succession.txt)
+      # UPDATE PnET-Succession.txt
       # --------------------------------------------------------------
       - name: Update Metadata File
         run: |
-          $v       = "${{ steps.version.outputs.v }}"
+          $v = "${{ steps.version.outputs.v }}"
           $filePath = "./deploy/installer/PnET-Succession.txt"
 
           $content = Get-Content $filePath
@@ -164,7 +177,7 @@ jobs:
           Set-Content $filePath $content
 
       # --------------------------------------------------------------
-      # Commit updated documentation + metadata
+      # COMMIT UPDATED DOCUMENTATION + METADATA
       # --------------------------------------------------------------
       - name: Commit updates
         run: |
@@ -172,5 +185,6 @@ jobs:
           git config user.email github-actions@github.com
           git add ./docs/index.md
           git add ./deploy/installer/PnET-Succession.txt
-          git commit -m "Update documentation and metadata for version ${{ steps.version.outputs.v }}"
+          git add ./src/PnET-Succession.csproj
+          git commit -m "Update documentation, metadata, and csproj for version ${{ steps.version.outputs.v }}"
           git push
